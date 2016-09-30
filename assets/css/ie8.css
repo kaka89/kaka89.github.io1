@@ -1,57 +1,60 @@
 /*
-	Escape Velocity by HTML5 UP
-	html5up.net | @n33co
+	Read Only by HTML5 UP
+	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 */
 
 /* Basic */
 
-	form input[type="text"],
-	form input[type="email"],
-	form input[type="password"],
-	form select,
-	form textarea {
-		position: relative;
-		-ms-behavior: url("assets/js/ie/PIE.htc");
-	}
-
-	input[type="button"],
+	code,
+	input[type="text"],
+	input[type="password"],
+	input[type="email"],
+	select,
+	textarea,
+	.box,
+	.image,
+	.image img,
 	input[type="submit"],
-	input[type="reset"] {
+	input[type="reset"],
+	input[type="button"],
+	.button {
 		position: relative;
 		-ms-behavior: url("assets/js/ie/PIE.htc");
 	}
 
-	.button,
-	#intro > .style2,
-	#copyright ul,
-	#nav > ul,
-	.dropotron {
-		position: relative;
-		-ms-behavior: url("assets/js/ie/PIE.htc");
+/* Form */
+
+	input[type="text"],
+	input[type="password"],
+	input[type="email"],
+	select {
+		line-height: 2.75em;
 	}
 
-/* Section/Article */
-
-	section > .last-child,
-	article > .last-child,
-	section.last-child,
-	article.last-child {
-		margin-bottom: 0;
+	input[type="checkbox"],
+	input[type="radio"] {
+		-moz-appearance: normal;
+		-webkit-appearance: normal;
+		-ms-appearance: normal;
+		appearance: normal;
 	}
 
-/* Wrappers */
+		input[type="checkbox"] + label,
+		input[type="radio"] + label {
+			padding: 0 0 0 1.5em;
+		}
 
-	.wrapper .title:before, .wrapper .title:after {
-		display: none;
-	}
+			input[type="checkbox"] + label:before,
+			input[type="radio"] + label:before {
+				display: none;
+			}
 
-	#header-wrapper {
-		-ms-behavior: url("assets/js/ie/backgroundsize.min.htc");
-	}
+/* Button */
 
-/* Copyright */
-
-	#copyright {
-		margin: 0;
+	input[type="submit"].alt,
+	input[type="reset"].alt,
+	input[type="button"].alt,
+	.button.alt {
+		border: solid 2px #e4e4e4;
 	}
