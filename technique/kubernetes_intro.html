@@ -45,422 +45,331 @@
 
 
 
-            <section id="five">
+            <section>
                 <div class="container">
-                    <h3>Elements</h3>
+                    <h3>从0搭建搭建kubernetes集群［一］</h3>
 
                     <section>
-                        <h4>Text</h4>
+                        <h4>说明</h4>
+                        <p>本文从0搭建kubernetes集群，并阐述每个步骤的结果验证办法，以及每步骤可能出现的问题以及对应解决方法。本人笨拙，若有不对，情指出。</p>
+                        <hr />
+                        <header>
+                            <h4>kubernetes简述</h4>
+                        </header>
+                        <h5>如果要搭建一个完善的微服务系统：</h5>
+                        <ul>
+                            <li>首先，这个系统需要一套能够很好的管理我们各个服务的服务，这个应该包含了"run","stop","scale","roll update"等功能。</li>
+                            <li>其次，这个系统还需要一套能够很好的监控服务的功能，例如服务的健康状态，CPU，内存的状态等，并在出现异常时即使预警。</li>
+                            <li>再次，这个系统需要一套完善的日志收集、查询的功能，线上的所有问及都能够通过查询日志来进行分析，所以一套完善的日志系统是必不可少的。</li>
+                            <li>这三个基础之上，我们可能还需要更多高级的服务，例如自动扩容，这些需要根据系统的需求去搭建。</li>
+                        </ul>
                         <p>
-                            This is <b>bold</b> and this is <strong>strong</strong>. This is <i>italic</i> and this is <em>emphasized</em>. This is <sup>superscript</sup>
-                            text and this is <sub>subscript</sub> text. This is <u>underlined</u> and this is code:
-                            <code>for (;;) { ... }</code>
-                            . Finally, <a href="#">this is a link</a>.
+                            而kubernetes是这么一个工具，它能够让我们很方便的搭建出一个分布式系统，同时它提供了很多的基础工具或服务，能够让我们比较轻松的管理，监控这个集群，并提供了非常方便的日志查询系统（这些属于额外插件），让我们能够定位线上问题。在服务运行结构上，kubernetes基于容器（例如docker，rkt）,并在此之上抽象了一层pod、service等机制。具体可查看官方文档<a
+                                href="http://kubernetes.io/">《官方文档》</a>
                         </p>
                         <hr />
-                        <header>
-                            <h4>Heading with a Subtitle</h4>
-                            <p>Lorem ipsum dolor sit amet nullam id egestas urna aliquam</p>
-                        </header>
-                        <p>Nunc lacinia ante nunc ac lobortis. Interdum adipiscing gravida odio porttitor sem non mi integer non faucibus ornare
-                            mi ut ante amet placerat aliquet. Volutpat eu sed ante lacinia sapien lorem accumsan varius montes viverra nibh in
-                            adipiscing blandit tempus accumsan.</p>
-                        <header>
-                            <h5>Heading with a Subtitle</h5>
-                            <p>Lorem ipsum dolor sit amet nullam id egestas urna aliquam</p>
-                        </header>
-                        <p>Nunc lacinia ante nunc ac lobortis. Interdum adipiscing gravida odio porttitor sem non mi integer non faucibus ornare
-                            mi ut ante amet placerat aliquet. Volutpat eu sed ante lacinia sapien lorem accumsan varius montes viverra nibh in
-                            adipiscing blandit tempus accumsan.</p>
-                        <hr />
-                        <h2>Heading Level 2</h2>
-                        <h3>Heading Level 3</h3>
-                        <h4>Heading Level 4</h4>
-                        <h5>Heading Level 5</h5>
-                        <h6>Heading Level 6</h6>
-                        <hr />
-                        <h5>Blockquote</h5>
-                        <blockquote>Fringilla nisl. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget tempus euismod.
-                            Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan
-                            faucibus. Vestibulum ante ipsum primis in faucibus lorem ipsum dolor sit amet nullam adipiscing eu felis.</blockquote>
-                        <h5>Preformatted</h5>
+                    </section>
+
+                    <section>
+                        <h4>本文搭建基础</h4>
+                        <p>本例子搭建在AWS的EC2上，因不想与AWS耦合太紧密，所以只用了EC2做虚拟机。EC2共4台，一台etcd服务器，一台做master，两台做node.</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>作用</th>
+                                    <th>内网IP</th>
+                                    <th>外网IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>etcd</td>
+                                    <td>etcd_inner_ip</td>
+                                    <td>etcd_outer_ip</td>
+                                </tr>
+                                <tr>
+                                    <td>master</td>
+                                    <td>master_inner_ip</td>
+                                    <td>master_outer_ip</td>
+                                </tr>
+                                <tr>
+                                    <td>node1</td>
+                                    <td>node1_inner_ip</td>
+                                    <td>node1_outer_ip</td>
+                                </tr>
+                                <tr>
+                                    <td>node2</td>
+                                    <td>node2_inner_ip</td>
+                                    <td>node2_outer_ip</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <ul>
+                            <li>系统：coreos</li>
+                            <!-- <p>一个专为容器技术打造的os</p> -->
+                            <li>docker: 1.10</li>
+                            <!-- <p>容器运行环境</p> -->
+                            <li>kubernetes: 1.4.0 (1.3.7,1.3.6也可以)</li>
+                            <li>etcd: 3.1.0</li>
+                            <!-- <p>一个稳定的key、value存储服务</p> -->
+                            <li>flannel: 0.6.2</li>
+                            <!-- <p>用于kubernetes的覆盖网络</p> -->
+                        </ul>
+                    </section>
+                    <h3>搭建步骤</h3>
+                    <section>
+                        <h4 style="color: #880208">1, 搭建ETCD服务</h4>
+                        <p>
+                            kubernetes采用etcd作为配置存储服务，所以需要先搭建etcd服务 <br />下载etcd. 这里根据自己的系统下载对应的，这里是coreos 64位，所以下载linux-amd64
+                        </p>
                         <pre>
-                            <code lang="Java">i = 0;
-
-	while (!deck.isInOrder()) {
-	    print 'Iteration ' + i;
-	    deck.shuffle();
-	    i++;
-	}
-
-	print 'It took ' + i + ' iterations to sort the deck.';</code>
+                        <code>
+wget https://github.com/coreos/etcd/releases/download/v3.0.10/etcd-v3.0.10-linux-amd64.tar.gz
+                        </code>
                         </pre>
+                        <p>解压：</p>
+                        <pre>
+                        <code>
+tar zxvf etcd-v3.0.10-linux-amd64.tar.gz
+                        </code>
+                        </pre>
+                        <p>转到etcd目录:</p>
+                        <pre>
+                        <code>
+cd etcd-v3.0.10-linux-amd64
+                        </code>
+                        </pre>
+                        <p>启动：</p>
+                        <pre>
+                        <code>
+./etcd --listen-client-urls http://etcd_inner_ip:2379,http://etcd_inner_ip:4001 --advertise-client-urls http://etcd_inner_ip:2379,http://etcd_inner_ip:4001  --data-dir /var/lib/etcd >> /var/log/etcd.log 2>&1 &
+                        </code>
+                        </pre>
+                        <b>执行上面那条命令的意思是：运行单机版本的一个etcd节点，并通过2379和4001对外提供服务</b>
+                        <p>检验运行结果：</p>
+                        <pre>
+                        <code>
+./etcdctl --endpoint http://etcd_inner_ip:4001 set testkey testvalue
+./etcdctl --endpoint http://etcd_inner_ip:4001  get testkey
+                        </code>
+                        </pre>
+                        <p>执行上面两句的结果应该都会输出testvalue，此时则表示etcd单节点集群已经正常运行起来了，并且运行的日志保存在文件：/var/log/etcd.log 下面。</p>
+                        <p>可能错误:</p>
+                        <pre>
+                        <code>
+Error:  client: etcd cluster is unavailable or misconfigured
+error #0: dial tcp etcd_inner_ip:2379: getsockopt: connection refused
+error #1: dial tcp etcd_inner_ip:4001: getsockopt: connection refused
+                        </code>
+                        </pre>
+                        <p>上面错误表示etcd服务并没有运行起来，可以参照/var/log/etcd.log的内容来进行修改。</p>
                     </section>
-
                     <section>
-                        <h4>Lists</h4>
-                        <div class="row">
-                            <div class="6u 12u(xsmall)">
-                                <h5>Unordered</h5>
-                                <ul>
-                                    <li>Dolor pulvinar etiam magna etiam.</li>
-                                    <li>Sagittis adipiscing lorem eleifend.</li>
-                                    <li>Felis enim feugiat dolore viverra.</li>
-                                </ul>
-                                <h5>Alternate</h5>
-                                <ul class="alt">
-                                    <li>Dolor pulvinar etiam magna etiam.</li>
-                                    <li>Sagittis adipiscing lorem eleifend.</li>
-                                    <li>Felis enim feugiat dolore viverra.</li>
-                                </ul>
-                            </div>
-                            <div class="6u 12u(xsmall)">
-                                <h5>Ordered</h5>
-                                <ol>
-                                    <li>Dolor pulvinar etiam magna etiam.</li>
-                                    <li>Etiam vel felis at lorem sed viverra.</li>
-                                    <li>Felis enim feugiat dolore viverra.</li>
-                                    <li>Dolor pulvinar etiam magna etiam.</li>
-                                    <li>Etiam vel felis at lorem sed viverra.</li>
-                                    <li>Felis enim feugiat dolore viverra.</li>
-                                </ol>
-                                <h5>Icons</h5>
-                                <ul class="icons">
-                                    <li><a href="#" class="icon fa-twitter"><span class="label">Twitter</span></a></li>
-                                    <li><a href="#" class="icon fa-facebook"><span class="label">Facebook</span></a></li>
-                                    <li><a href="#" class="icon fa-instagram"><span class="label">Instagram</span></a></li>
-                                    <li><a href="#" class="icon fa-github"><span class="label">Github</span></a></li>
-                                    <li><a href="#" class="icon fa-dribbble"><span class="label">Dribbble</span></a></li>
-                                    <li><a href="#" class="icon fa-tumblr"><span class="label">Tumblr</span></a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <h5>Actions</h5>
-                        <ul class="actions">
-                            <li><a href="#" class="button special">Default</a></li>
-                            <li><a href="#" class="button">Default</a></li>
-                            <li><a href="#" class="button alt">Default</a></li>
-                        </ul>
-                        <ul class="actions small">
-                            <li><a href="#" class="button special small">Small</a></li>
-                            <li><a href="#" class="button small">Small</a></li>
-                            <li><a href="#" class="button alt small">Small</a></li>
-                        </ul>
-                        <div class="row">
-                            <div class="3u 6u(medium) 12u$(xsmall)">
-                                <ul class="actions vertical">
-                                    <li><a href="#" class="button special">Default</a></li>
-                                    <li><a href="#" class="button">Default</a></li>
-                                    <li><a href="#" class="button alt">Default</a></li>
-                                </ul>
-                            </div>
-                            <div class="3u 6u$(medium) 12u$(xsmall)">
-                                <ul class="actions vertical small">
-                                    <li><a href="#" class="button special small">Small</a></li>
-                                    <li><a href="#" class="button small">Small</a></li>
-                                    <li><a href="#" class="button alt small">Small</a></li>
-                                </ul>
-                            </div>
-                            <div class="3u 6u(medium) 12u$(xsmall)">
-                                <ul class="actions vertical">
-                                    <li><a href="#" class="button special fit">Default</a></li>
-                                    <li><a href="#" class="button fit">Default</a></li>
-                                    <li><a href="#" class="button alt fit">Default</a></li>
-                                </ul>
-                            </div>
-                            <div class="3u 6u$(medium) 12u$(xsmall)">
-                                <ul class="actions vertical small">
-                                    <li><a href="#" class="button special small fit">Small</a></li>
-                                    <li><a href="#" class="button small fit">Small</a></li>
-                                    <li><a href="#" class="button alt small fit">Small</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section>
-                        <h4>Table</h4>
-                        <h5>Default</h5>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                        <th>Price</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Item One</td>
-                                        <td>Ante turpis integer aliquet porttitor.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Two</td>
-                                        <td>Vis ac commodo adipiscing arcu aliquet.</td>
-                                        <td>19.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Three</td>
-                                        <td>Morbi faucibus arcu accumsan lorem.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Four</td>
-                                        <td>Vitae integer tempus condimentum.</td>
-                                        <td>19.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Five</td>
-                                        <td>Ante turpis integer aliquet porttitor.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="2"></td>
-                                        <td>100.00</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        <h5>Alternate</h5>
-                        <div class="table-wrapper">
-                            <table class="alt">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                        <th>Price</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Item One</td>
-                                        <td>Ante turpis integer aliquet porttitor.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Two</td>
-                                        <td>Vis ac commodo adipiscing arcu aliquet.</td>
-                                        <td>19.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Three</td>
-                                        <td>Morbi faucibus arcu accumsan lorem.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Four</td>
-                                        <td>Vitae integer tempus condimentum.</td>
-                                        <td>19.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Item Five</td>
-                                        <td>Ante turpis integer aliquet porttitor.</td>
-                                        <td>29.99</td>
-                                    </tr>
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="2"></td>
-                                        <td>100.00</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </section>
-
-                    <section>
-                        <h4>Buttons</h4>
-                        <ul class="actions">
-                            <li><a href="#" class="button special">Special</a></li>
-                            <li><a href="#" class="button">Default</a></li>
-                            <li><a href="#" class="button alt">Alternate</a></li>
-                        </ul>
-                        <ul class="actions">
-                            <li><a href="#" class="button special big">Big</a></li>
-                            <li><a href="#" class="button">Default</a></li>
-                            <li><a href="#" class="button alt small">Small</a></li>
-                        </ul>
-                        <ul class="actions fit">
-                            <li><a href="#" class="button special fit">Fit</a></li>
-                            <li><a href="#" class="button fit">Fit</a></li>
-                            <li><a href="#" class="button alt fit">Fit</a></li>
-                        </ul>
-                        <ul class="actions fit small">
-                            <li><a href="#" class="button special fit small">Fit + Small</a></li>
-                            <li><a href="#" class="button fit small">Fit + Small</a></li>
-                            <li><a href="#" class="button alt fit small">Fit + Small</a></li>
-                        </ul>
-                        <ul class="actions">
-                            <li><a href="#" class="button special icon fa-download">Icon</a></li>
-                            <li><a href="#" class="button icon fa-download">Icon</a></li>
-                            <li><a href="#" class="button alt icon fa-check">Icon</a></li>
-                        </ul>
-                        <ul class="actions">
-                            <li><span class="button special disabled">Special</span></li>
-                            <li><span class="button disabled">Default</span></li>
-                            <li><span class="button alt disabled">Alternate</span></li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h4>Form</h4>
-                        <form method="post" action="#">
-                            <div class="row uniform">
-                                <div class="6u 12u(xsmall)">
-                                    <input type="text" name="demo-name" id="demo-name" value="" placeholder="Name" />
-                                </div>
-                                <div class="6u 12u(xsmall)">
-                                    <input type="email" name="demo-email" id="demo-email" value="" placeholder="Email" />
-                                </div>
-                            </div>
-                            <div class="row uniform">
-                                <div class="12u">
-                                    <div class="select-wrapper">
-                                        <select name="demo-category" id="demo-category">
-                                            <option value="">- Category -</option>
-                                            <option value="1">Manufacturing</option>
-                                            <option value="1">Shipping</option>
-                                            <option value="1">Administration</option>
-                                            <option value="1">Human Resources</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row uniform">
-                                <div class="4u 12u(medium)">
-                                    <input type="radio" id="demo-priority-low" name="demo-priority" checked> <label for="demo-priority-low">Low
-                                        Priority</label>
-                                </div>
-                                <div class="4u 12u(medium)">
-                                    <input type="radio" id="demo-priority-normal" name="demo-priority"> <label for="demo-priority-normal">Normal
-                                        Priority</label>
-                                </div>
-                                <div class="4u 12u(medium)">
-                                    <input type="radio" id="demo-priority-high" name="demo-priority"> <label for="demo-priority-high">High
-                                        Priority</label>
-                                </div>
-                            </div>
-                            <div class="row uniform">
-                                <div class="6u 12u(medium)">
-                                    <input type="checkbox" id="demo-copy" name="demo-copy"> <label for="demo-copy">Email me a copy of
-                                        this message</label>
-                                </div>
-                                <div class="6u 12u(medium)">
-                                    <input type="checkbox" id="demo-human" name="demo-human" checked> <label for="demo-human">I am a
-                                        human and not a robot</label>
-                                </div>
-                            </div>
-                            <div class="row uniform">
-                                <div class="12u">
-                                    <textarea name="demo-message" id="demo-message" placeholder="Enter your message" rows="6"></textarea>
-                                </div>
-                            </div>
-                            <div class="row uniform">
-                                <div class="12u">
-                                    <ul class="actions">
-                                        <li><input type="submit" value="Send Message" /></li>
-                                        <li><input type="reset" value="Reset" class="alt" /></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </form>
-                    </section>
-
-                    <section>
-                        <h4>Image</h4>
-                        <h5>Fit</h5>
-                        <span class="image fit"><img src="images/banner.jpg" alt="" /></span>
-                        <div class="box alt">
-                            <div class="row 50% uniform">
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic01.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic02.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic03.jpg" alt="" /></span>
-                                </div>
-                            </div>
-                            <div class="row 50% uniform">
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic02.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic03.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic01.jpg" alt="" /></span>
-                                </div>
-                            </div>
-                            <div class="row 50% uniform">
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic03.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic01.jpg" alt="" /></span>
-                                </div>
-                                <div class="4u">
-                                    <span class="image fit"><img src="images/pic02.jpg" alt="" /></span>
-                                </div>
-                            </div>
-                        </div>
-                        <h5>Left &amp; Right</h5>
+                        <h4 style="color: #880208">2, 搭建Master</h4>
                         <p>
-                            <span class="image left"><img src="images/avatar.jpg" alt="" /></span>Fringilla nisl. Donec accumsan interdum nisi, quis
-                            tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu
-                            felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget.
-                            tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac
-                            adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Donec accumsan interdum nisi, quis tincidunt felis
-                            sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis
-                            volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus
-                            euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing
-                            accumsan eu faucibus. Integer ac pellentesque praesent.
+                            在master上面运行的部件共包涵下面几个： <a>API-Server</a>, <a>Controller-Manager</a>, <a>Scheduler kube-dns</a>
                         </p>
+                        <p>进入master机器，并下载kubernetes:</p>
+                        <pre>
+                            <code>
+wget https://github.com/kubernetes/kubernetes/releases/download/v1.4.0/kubernetes.tar.gz
+                            </code>
+                        </pre>
+                        <p>默认下载到/home/core目录下面。 解压:</p>
+                        <pre>
+                            <code>
+tar zxvf kubernetes.tar.gz
+cd kubernetes/server
+tar zxvf kubernetes-server-linux-amd64.tar.gz
+                            </code>
+                        </pre>
+                        <p>解释：kubernetes.tar.gz这个是kubernetes的所有资源集合, kubernetes-server-linux-amd64.tar.gz是针对不同平台的运行包集合，这里采用的是linux amd64.</p>
+                        <p>添加至PATH路径:</p>
+                        <pre>
+                            <code>
+export PATH=/home/core/kubernetes/server/kubernetes/server/bin/:$PATH
+                            </code>
+                        </pre>
+                        <h5>2.1, 启动kube-apiserver</h5>
+                        <pre>
+                            <code>
+kube-apiserver --logtostderr=true --v=0 --etcd-servers=http://etcd_inner_ip:4001 --insecure-bind-address=0.0.0.0 --insecure-port=8080 --service-cluster-ip-range=10.254.0.0/16 >> /var/log/kube-apiserver.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>以上命令启动了kube-apiserver，并使用http://etcd_inner_ip:4001作为etcd配置服务, 同时监听的端口是8080</p>
+                        <p>检查方法:</p>
+                        <pre>
+                            <code>
+curl http://master_outer_ip:8080
+
+{
+  "paths": [
+    "/api",
+    "/api/v1",
+    "/apis",
+    "/apis/apps",
+    "/apis/apps/v1alpha1",
+    "/apis/authentication.k8s.io",
+    "/apis/authentication.k8s.io/v1beta1",
+    "/apis/authorization.k8s.io",
+    "/apis/authorization.k8s.io/v1beta1",
+    "/apis/autoscaling",
+    "/apis/autoscaling/v1",
+    "/apis/batch",
+    "/apis/batch/v1",
+    "/apis/batch/v2alpha1",
+    "/apis/certificates.k8s.io",
+    "/apis/certificates.k8s.io/v1alpha1",
+    "/apis/extensions",
+    "/apis/extensions/v1beta1",
+    "/apis/policy",
+    "/apis/policy/v1alpha1",
+    "/apis/rbac.authorization.k8s.io",
+    "/apis/rbac.authorization.k8s.io/v1alpha1",
+    "/apis/storage.k8s.io",
+    "/apis/storage.k8s.io/v1beta1",
+    "/healthz",
+    "/healthz/ping",
+    "/logs",
+    "/metrics",
+    "/swaggerapi/",
+    "/ui/",
+    "/version"
+  ]
+}
+                            </code>
+                        </pre>
+                        <p>能够看到相应的输出。</p>
+                        <p>或者在master上执行：</p>
+                        <pre>
+                            <code>
+kubectl version
+
+Client Version: version.Info{Major:"1", Minor:"4", GitVersion:"v1.4.0", GitCommit:"a16c0a7f71a6f93c7e0f222d961f4675cd97a46b", GitTreeState:"clean", BuildDate:"2016-09-26T18:16:57Z", GoVersion:"go1.6.3", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"4", GitVersion:"v1.4.0", GitCommit:"a16c0a7f71a6f93c7e0f222d961f4675cd97a46b", GitTreeState:"clean", BuildDate:"2016-09-26T18:10:32Z", GoVersion:"go1.6.3", Compiler:"gc", Platform:"linux/amd64"}
+                            </code>
+                        </pre>
+                        <p>如果能够同时看到client和api server的版本，则算是启动成功。</p>
+                        <h5>2.2, 启动Controller-Manager和Scheduler:</h5>
+                        <pre>
+                            <code>
+kube-controller-manager --logtostderr=true --v=0 --master=http://master_inner_ip:8080 >> /var/log/kube-controller.log 2>&1 &
+
+kube-scheduler --logtostderr=true --v=0 --master=http://master_inner_ip:8080 >> /var/log/kube-scheduler.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>检验：</p>
+                        <pre>
+                            <code>
+kubectl get componentstatus
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok                   
+scheduler            Healthy   ok                   
+etcd-0               Healthy   {"health": "true"}
+                            </code>
+                        </pre>
+                        <h5>2.3, 启动kube-dns:</h5>
+                        <pre>
+                            <code>
+kube-dns --kube-master-url=http://master_inner_ip:8080 --logtostderr=true --v=0 >> /var/log/kube-dns.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>至此kubernetes的master节点就搭建好了</p>
+                    </section>
+                    <section>
+                        <h4 style="color: #880208">3, 搭建node</h4>
+                        <p>node是我们应用程序的实际的运行地方，在node上，需要运行三个东西</p>
+                        <pre>
+                            <code>
+kubelet
+kube-proxy
+docker
+                            </code>
+                        </pre>
                         <p>
-                            <span class="image right"><img src="images/avatar.jpg" alt="" /></span>Fringilla nisl. Donec accumsan interdum nisi, quis
-                            tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu
-                            felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget.
-                            tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac
-                            adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Donec accumsan interdum nisi, quis tincidunt felis
-                            sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis
-                            volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus
-                            euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing
-                            accumsan eu faucibus. Integer ac pellentesque praesent.
+                            kubelet是master管理node的入口，抑或说是其代理，通过kubelet，能够管理node上运行的pods等。 <br />kube-proxy则是服务代理，用来代理service。 <br />docker
+                            则是真正的容器运行的环境。
+                        </p>
+                        <p>参照master，下载kubernetes，解压并添加到PATH路径.</p>
+                        <h5>启动kubelet和kube-proxy:</h5>
+
+                        <pre>
+                            <code>
+kubelet --logtostderr=true --v=0 --address=0.0.0.0 --api-servers=http://master_inner_ip:8080 >> /var/log/kubelet.log 2>&1 &
+ kube-proxy --logtostderr=true --v=0 --master=http://master_inner_ip:8080 >> /var/log/kube-proxy.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>检查node是否正确启动：</p>
+                        <pre>
+                            <code>
+kubectl get nodes
+NAME            STATUS    AGE
+node1_name      Ready     0d
+node2_name      Ready     0d
+                            </code>
+                        </pre>
+                        <p>至此所有的node均启动完毕。</p>
+                    </section>
+                    <section>
+                        <h4 style="color: #880208">4, 搭建kubernetes的覆盖网络</h4>
+                        <p>由于docker本身的网络并不支持kubernetes的网络模型，所以我们需要在docker的网络模型之上搭建一个覆盖网络，以kubernetes的网络模型能够正常工作。这里我们使用的是flannel 0.6.2版本</p>
+                        <p>下载flannel并解压:</p>
+                        <pre>
+                            <code>
+cd /home/core/flannel
+wget https://github.com/coreos/flannel/releases/download/v0.6.2/flannel-v0.6.2-linux-amd64.tar.gz
+tar zxvf flannel-v0.6.2-linux-amd64.tar.gz
+                            </code>
+                        </pre>
+                        <p>由于flannel使用etcd作为配置服务，所以在运行flannel之前，我们需要在etcd中添加我们的网络配置：</p>
+                        <pre>
+                            <code>
+etcdctl set /coreos.com/network/config '{"Network": "10.0.0.0/16"}'
+                            </code>
+                        </pre>
+                        <p>运行flannel:</p>
+                        <pre>
+                            <code>
+./flanneld -etcd-endpoints=http://etcd_inner_ip:4001 >> /var/log/flanneld.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>然后我们需要替换现有的docker网络：</p>
+                        <pre>
+                            <code>
+iptables -t nat -F
+
+ifconfig docker0 down
+
+brctl delbr docker0
+
+source /run/flannel/subnet.env
+
+systemctl stop docker
+
+docker daemon --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} >> /var/log/docker.log 2>&1 &
+                            </code>
+                        </pre>
+                        <p>以上几步的作用是：先关闭docker网络，然后重启docker，并指定使用flannel作为其网络配置。</p>
+                        <b>覆盖网络需要安装在所有节点上，包括master</b> <br /> <br />
+                        <p>至此一个基本的kubernetes集群就搭建好了</p>
+                        <p>下篇介绍如何在此之上搭建dashboard</p>
+                    </section>
+                    <section>
+                        <p>
+                            <a href="../pdf/setup_single_master_kubernetes_cluster.pdf">文章PDF地址</a>
                         </p>
                     </section>
-
                 </div>
-            </section>
-
-
         </div>
 
-        <!-- Footer -->
-        <section id="footer">
-            <div class="container">
-                <ul class="copyright">
-                    <li>&copy; Untitled. All rights reserved.</li>
-                    <li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
-                </ul>
-            </div>
-        </section>
-
-    </div>
-
-    <!-- Scripts -->
-    <script src="../assets/js/jquery.min.js"></script>
-    <script src="../assets/js/jquery.scrollzer.min.js"></script>
-    <script src="../assets/js/jquery.scrolly.min.js"></script>
-    <script src="../assets/js/skel.min.js"></script>
-    <script src="../assets/js/util.js"></script>
-    <!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
-    <script src="../assets/js/main.js"></script>
-
+        <!-- Scripts -->
+        <script src="../assets/js/jquery.min.js"></script>
+        <script src="../assets/js/jquery.scrollzer.min.js"></script>
+        <script src="../assets/js/jquery.scrolly.min.js"></script>
+        <script src="../assets/js/skel.min.js"></script>
+        <script src="../assets/js/util.js"></script>
+        <!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+        <script src="../assets/js/main.js"></script>
 </body>
 </html>
